@@ -52,6 +52,7 @@ public class PoolManager {
         logger.info("-------Closing All Object Pools-------");
 
         keywordExtractorGenericObjectPool.close();
+        keywordExtractorGenericObjectPool = null;
     }
 
 

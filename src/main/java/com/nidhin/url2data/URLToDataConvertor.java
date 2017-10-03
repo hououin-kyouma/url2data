@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class URLToDataConvertor {
@@ -186,93 +187,116 @@ public class URLToDataConvertor {
                })
                .filter(Objects::nonNull)
                .collect(Collectors.toList());
-
+        allDataFiles = null;
        logger.info("generated url objs - " + urlDatas.size());
-
-        ConcurrentHashMap<String, ArrayList<String>> aspirationUrlsMapConc = new ConcurrentHashMap<>();
-        ConcurrentHashMap<String, ArrayList<String>> urlKeywordsMapConc = new ConcurrentHashMap<>();
-        ConcurrentHashMap<String, ArrayList<String>> urlMetaKeywordsMapConc = new ConcurrentHashMap<>();
-        ConcurrentHashMap<String, double[]> keyVectorMapConc = new ConcurrentHashMap<>();
+       List<URLData> datasWithKwords;
+        AtomicLong keywordsCount = new AtomicLong(0);
+        {
+            ConcurrentHashMap<String, ArrayList<String>> aspirationUrlsMapConc = new ConcurrentHashMap<>(8);
+            ConcurrentHashMap<String, ArrayList<String>> urlKeywordsMapConc = new ConcurrentHashMap<>(urlDatas.size());
+            ConcurrentHashMap<String, ArrayList<String>> urlMetaKeywordsMapConc = new ConcurrentHashMap<>(urlDatas.size());
 //        ConcurrentHashMap<String, HashSet<String>> aspirationKeywordsMapConc = new ConcurrentHashMap<>();
 //        ConcurrentHashMap<String, HashSet<double[]>> aspirationKeyVectorsMapConc = new ConcurrentHashMap<>();
 
-        HashMap<String, ArrayList<String>> aspirationUrlsMap = new HashMap<>();
-        HashMap<String, ArrayList<String>> urlKeywordsMap = new HashMap<>();
-        HashMap<String, ArrayList<String>> urlMetaKeywordsMap = new HashMap<>();
-        HashMap<String, double[]> keyVectorMap = new HashMap<>();
+            HashMap<String, ArrayList<String>> aspirationUrlsMap = new HashMap<>(8);
+            HashMap<String, ArrayList<String>> urlKeywordsMap = new HashMap<>(urlDatas.size());
+            HashMap<String, ArrayList<String>> urlMetaKeywordsMap = new HashMap<>(urlDatas.size());
 //        HashMap<String, HashSet<String>> aspirationKeywordsMap = new HashMap<>();
 //        HashMap<String, HashSet<double[]>> aspirationKeyVectorsMap = new HashMap<>();
 
-        AtomicInteger vectorizedurlsCount = new AtomicInteger(0);
-        AtomicInteger kextractedurlsCount = new AtomicInteger(0);
-       List<URLData> datasWithKwords = urlDatas.stream()
-               .parallel()
-               .map(URLToDataConvertor::extractNgrams)
-               .map(urlData -> {
-                   if (!aspirationUrlsMapConc.containsKey(urlData.getAspiration())){
-                       aspirationUrlsMapConc.put(urlData.getAspiration(), new ArrayList<>());
-                   }
-                   aspirationUrlsMapConc.get(urlData.getAspiration()).add(urlData.getUrl());
+            AtomicInteger kextractedurlsCount = new AtomicInteger(0);
+            datasWithKwords = urlDatas.stream()
+                    .parallel()
+                    .map(URLToDataConvertor::extractNgrams)
+                    .map(urlData -> {
+                        keywordsCount.addAndGet(urlData.getNgrams().size() + urlData.getMetakeywords().size());
+                        if (!aspirationUrlsMapConc.containsKey(urlData.getAspiration())) {
+                            aspirationUrlsMapConc.put(urlData.getAspiration(), new ArrayList<>());
+                        }
+                        aspirationUrlsMapConc.get(urlData.getAspiration()).add(urlData.getUrl());
 //                   if (!urlKeywordsMapConc.containsKey(urlData.getUrl())){
-                       urlKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
+                        urlKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
 //                   }
-                   urlKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getNgrams());
+                        urlKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getNgrams());
 //                   if (!urlMetaKeywordsMapConc.containsKey(urlData.getUrl())){
-                       urlMetaKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
+                        urlMetaKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
 //                   }
-                   urlMetaKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getMetakeywords());
+                        urlMetaKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getMetakeywords());
 
-                   int vcount = kextractedurlsCount.incrementAndGet();
-                   if (vcount% 25 ==0){
-                       logger.info("finished kword extracting - " + vcount);
-                   }
-                  return urlData;
-               })
-               .collect(Collectors.toList());
+                        int vcount = kextractedurlsCount.incrementAndGet();
+                        if (vcount % 25 == 0) {
+                            logger.info("finished kword extracting - " + vcount);
+                        }
+                        return urlData;
+                    })
+                    .collect(Collectors.toList());
+
+            aspirationUrlsMap.putAll(aspirationUrlsMapConc);
+            urlKeywordsMap.putAll(urlKeywordsMapConc);
+            urlMetaKeywordsMap.putAll(urlMetaKeywordsMapConc);
+
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("aspirationUrlsMap.ser"));
+            oos.writeObject(aspirationUrlsMap);
+            oos.flush();
+            oos.close();
+
+            oos = new ObjectOutputStream(new FileOutputStream("urlKeywordsMap.ser"));
+            oos.writeObject(urlKeywordsMap);
+            oos.flush();
+            oos.close();
+            oos = new ObjectOutputStream(new FileOutputStream("urlMetaKeywordsMap.ser"));
+            oos.writeObject(urlMetaKeywordsMap);
+            oos.flush();
+            oos.close();
+            try {
+                PoolManager.getInstance().stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.gc();
+        AtomicInteger vectorizedurlsCount = new AtomicInteger(0);
+
         Word2Vecdl4j word2Vecdl4j = new Word2Vecdl4j();
         word2Vecdl4j.loadModel("en", new File("GoogleNews-vectors-negative300.bin"));
-       datasWithKwords.stream()
-               .forEach(urlData -> {
-
+        ConcurrentHashMap<String, double[]> keyVectorMapConc = new ConcurrentHashMap<>();
+        List<HashMap<String, double[]>> mapList = datasWithKwords.stream()
+               .map(urlData -> {
+                   int vcount = vectorizedurlsCount.incrementAndGet();
+                   if (vcount% 25 ==0){
+                       logger.info("finished vectorizing - " + (vcount-1));
+                   }
+                    HashMap<String, double[]> vecMap = new HashMap<>();
                    for (String key : urlData.getNgrams()){
                        String kword = key.toLowerCase().trim();
                        double[] vec = word2Vecdl4j.getVectorForNGram("en", kword);
                        if (vec != null)
-                           keyVectorMapConc.put(kword, vec);
+                           vecMap.put(kword, vec);
 
                    }
                    for (String key : urlData.getMetakeywords()){
                        String kword = key.toLowerCase().trim();
                        double[] vec = word2Vecdl4j.getVectorForNGram("en", kword);
                        if (vec != null)
-                           keyVectorMapConc.put(kword, vec);
+                           vecMap.put(kword, vec);
 
                    }
-                   int vcount = vectorizedurlsCount.incrementAndGet();
-                   if (vcount% 25 ==0){
-                       logger.info("finished vectorizing - " + vcount);
-                   }
-               });
 
-       aspirationUrlsMap.putAll(aspirationUrlsMapConc);
-       urlKeywordsMap.putAll(urlKeywordsMapConc);
-       urlMetaKeywordsMap.putAll(urlMetaKeywordsMapConc);
-       keyVectorMap.putAll(keyVectorMapConc);
+                   return vecMap;
+
+
+               })
+                .collect(Collectors.toList());
+
+
+
+        HashMap<String, double[]> keyVectorMap = new HashMap<>(keywordsCount.intValue());
+        for (HashMap<String, double[]> vecMap : mapList){
+            keyVectorMap.putAll(vecMap);
+        }
             logger.info("serializing...");
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("aspirationUrlsMap.ser"));
-        oos.writeObject(aspirationUrlsMap);
-        oos.flush();
-        oos.close();
 
-        oos = new ObjectOutputStream(new FileOutputStream("urlKeywordsMap.ser"));
-        oos.writeObject(urlKeywordsMap);
-        oos.flush();
-        oos.close();
-        oos = new ObjectOutputStream(new FileOutputStream("urlMetaKeywordsMap.ser"));
-        oos.writeObject(urlMetaKeywordsMap);
-        oos.flush();
-        oos.close();
-        oos = new ObjectOutputStream(new FileOutputStream("keyVectorMap.ser"));
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("keyVectorMap.ser"));
         oos.writeObject(keyVectorMap);
         oos.flush();
         oos.close();
