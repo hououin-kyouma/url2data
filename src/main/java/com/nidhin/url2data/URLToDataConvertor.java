@@ -212,13 +212,13 @@ public class URLToDataConvertor {
                        aspirationUrlsMapConc.put(urlData.getAspiration(), new ArrayList<>());
                    }
                    aspirationUrlsMapConc.get(urlData.getAspiration()).add(urlData.getUrl());
-                   if (!urlKeywordsMapConc.containsKey(urlData.getUrl())){
+//                   if (!urlKeywordsMapConc.containsKey(urlData.getUrl())){
                        urlKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
-                   }
+//                   }
                    urlKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getNgrams());
-                   if (!urlMetaKeywordsMapConc.containsKey(urlData.getUrl())){
+//                   if (!urlMetaKeywordsMapConc.containsKey(urlData.getUrl())){
                        urlMetaKeywordsMapConc.put(urlData.getUrl(), new ArrayList<>());
-                   }
+//                   }
                    urlMetaKeywordsMapConc.get(urlData.getUrl()).addAll(urlData.getMetakeywords());
 
                    int vcount = kextractedurlsCount.incrementAndGet();
