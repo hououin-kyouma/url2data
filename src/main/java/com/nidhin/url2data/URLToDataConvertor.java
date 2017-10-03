@@ -4,6 +4,7 @@ package com.nidhin.url2data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nidhin.url2data.objpool.PoolManager;
 import de.l3s.boilerpipe.BoilerpipeProcessingException;
 import de.l3s.boilerpipe.extractors.ArticleExtractor;
 import de.l3s.boilerpipe.extractors.DefaultExtractor;
@@ -205,7 +206,7 @@ public class URLToDataConvertor {
         AtomicInteger vectorizedurlsCount = new AtomicInteger(0);
         AtomicInteger kextractedurlsCount = new AtomicInteger(0);
        List<URLData> datasWithKwords = urlDatas.stream()
-//               .parallel()
+               .parallel()
                .map(URLToDataConvertor::extractNgrams)
                .map(urlData -> {
                    if (!aspirationUrlsMapConc.containsKey(urlData.getAspiration())){
@@ -281,25 +282,35 @@ public class URLToDataConvertor {
     }
 
     public static URLData extractNgrams(URLData urlData){
-         KeywordExtractor keywordExtractor = KeywordExtractor.getInstance();
+        PoolManager poolManager = null;
         try {
-            keywordExtractor.loadStopWords("SmartStopListEn");
-        } catch (IOException e) {
+            poolManager = PoolManager.getInstance();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        String html = urlData.getHtml();
-        String text = urlData.isUseBoilerText()? urlData.getBoilerText(): urlData.getText();
-        keywordExtractor.setHtmlAndText(html, text);
+        KeywordExtractor keywordExtractor = poolManager.borrowKEObject();
         try {
-            HashSet<String> kwords = keywordExtractor.extractKeyWords();
-            urlData.getNgrams().addAll(kwords);
-            urlData.getMetakeywords().addAll(keywordExtractor.getStrictMetaKeywords());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (BoilerpipeProcessingException e) {
-            e.printStackTrace();
-        }
+            try {
+                keywordExtractor.loadStopWords("SmartStopListEn");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            String html = urlData.getHtml();
+            String text = urlData.isUseBoilerText() ? urlData.getBoilerText() : urlData.getText();
+            keywordExtractor.setHtmlAndText(html, text);
+            try {
+                HashSet<String> kwords = keywordExtractor.extractKeyWords();
+                urlData.getNgrams().addAll(kwords);
+                urlData.getMetakeywords().addAll(keywordExtractor.getStrictMetaKeywords());
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (BoilerpipeProcessingException e) {
+                e.printStackTrace();
+            }
+        }catch (Exception e){
 
+        }
+        poolManager.returnKEObject(keywordExtractor);
         return urlData;
     }
 
