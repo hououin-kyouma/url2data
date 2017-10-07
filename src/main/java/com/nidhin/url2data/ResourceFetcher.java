@@ -50,6 +50,7 @@ public class ResourceFetcher {
         int offset = 0;
         boolean repeat = true;
         BufferedWriter bw = new BufferedWriter(new FileWriter(file,true));
+        int totalRecdCount =0;
 
         while (repeat && urls.size() < total) {
             System.out.println("next bing req");
@@ -95,8 +96,15 @@ public class ResourceFetcher {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
             urls.addAll(trueUrls);
+
             System.out.println("Urls got - " + urls.size());
-            offset+= recdItemsSize;
+            if (urls.size()> totalRecdCount) {
+                totalRecdCount = urls.size();
+                offset = totalRecdCount;
+            }
+            else {
+                offset += 10;
+            }
             for (String url : trueUrls){
                 bw.write(url);
                 bw.newLine();
