@@ -47,7 +47,7 @@ public class ResourceFetcher {
 
         HashSet<String> urls = new HashSet<>();
 //        String q= "Network+business+social+relationships+effectively+strategically+professional+student+college";
-        int count = 50;
+        int count = 100;
         int offset = 0;
         boolean repeat = true;
         BufferedWriter bw = new BufferedWriter(new FileWriter(file,true));
@@ -56,11 +56,12 @@ public class ResourceFetcher {
             System.out.println("next bing req");
             HashMap<String, Object> respMap = buildRequestAndHitEndpoint(q, count, offset);
             System.out.println("bing req done");
-            System.out.println("retrieved - " + ((ArrayList<LinkedTreeMap>)((LinkedTreeMap)respMap.get("webPages")).get("value")).size());
+            int recdItemsSize = ((ArrayList<LinkedTreeMap>)((LinkedTreeMap)respMap.get("webPages")).get("value")).size();
+            System.out.println("retrieved - " + recdItemsSize);
 
             List<String> trueUrls =  ((ArrayList<LinkedTreeMap>)((LinkedTreeMap)respMap.get("webPages")).get("value"))
                     .stream()
-//                    .parallel()
+                    .parallel()
                     .map(linkedTreeMap -> {
                         String bingUrl = (String) linkedTreeMap.get("url");
                         System.out.println("starting url fetch -" + bingUrl);
@@ -96,7 +97,7 @@ public class ResourceFetcher {
                     .collect(Collectors.toList());
             urls.addAll(trueUrls);
             System.out.println("Urls got - " + urls.size());
-            offset+= count;
+            offset+= recdItemsSize;
             for (String url : trueUrls){
                 bw.write(url);
                 bw.newLine();
