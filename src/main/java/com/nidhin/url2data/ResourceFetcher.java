@@ -60,7 +60,7 @@ public class ResourceFetcher {
 
             List<String> trueUrls =  ((ArrayList<LinkedTreeMap>)((LinkedTreeMap)respMap.get("webPages")).get("value"))
                     .stream()
-                    .parallel()
+//                    .parallel()
                     .map(linkedTreeMap -> {
                         String bingUrl = (String) linkedTreeMap.get("url");
                         System.out.println("starting url fetch -" + bingUrl);
@@ -72,15 +72,15 @@ public class ResourceFetcher {
                         String finalURL = null;
                         try {
                             finalURL = stringFuture.get(30, TimeUnit.SECONDS);
-                            System.out.println("Got true url " + bingUrl);
+//                            System.out.println("Got true url " + bingUrl);
                         }
                         catch (InterruptedException ie) {
   /* Handle the interruption. Or ignore it. */
-                            System.out.println("Failed to get for(interrupted) " + bingUrl);
+//                            System.out.println("Failed to get for(interrupted) " + bingUrl);
                         }
                         catch (ExecutionException ee) {
   /* Handle the error. Or ignore it. */
-                            System.out.println("Failed to get for(execution) " + bingUrl);
+//                            System.out.println("Failed to get for(execution) " + bingUrl);
 
                         }
                         catch (TimeoutException te) {
