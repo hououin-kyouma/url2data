@@ -63,7 +63,7 @@ public class ResourceFetcher {
 //                    .parallel()
                     .map(linkedTreeMap -> {
                         String bingUrl = (String) linkedTreeMap.get("url");
-                        System.out.println("starting url fetch -" + bingUrl);
+//                        System.out.println("starting url fetch -" + bingUrl);
 //                        String trueUrl = getFinalURL(bingUrl);
 //                        return trueUrl;
 
@@ -127,8 +127,8 @@ public class ResourceFetcher {
             }
         } catch (IOException e){
 //            e.printStackTrace();
-            System.out.println("Exception - " + e.getMessage());
-            System.out.println(url);
+//            System.out.println("Exception - " + e.getMessage());
+//            System.out.println(url);
         }
         return url;
     }
