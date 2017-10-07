@@ -42,17 +42,17 @@ public class ResourceFetcher {
 
     }
 
-    public void getWebURLS(String q, String file, int total) throws IOException {
+    public void getWebURLS(String q, String file, int total, int maxIter) throws IOException {
 
         HashSet<String> urls = new HashSet<>();
 //        String q= "Network+business+social+relationships+effectively+strategically+professional+student+college";
-        int count = 100;
+        int count = 50;
         int offset = 0;
         boolean repeat = true;
         BufferedWriter bw = new BufferedWriter(new FileWriter(file,true));
         int totalRecdCount =0;
 
-        while (repeat && urls.size() < total) {
+        while (repeat && urls.size() < total &&(maxIter-- > 0)) {
             System.out.println("next bing req");
             HashMap<String, Object> respMap = buildRequestAndHitEndpoint(q, count, offset);
             System.out.println("bing req done");
@@ -105,14 +105,18 @@ public class ResourceFetcher {
             else {
                 offset += 10;
             }
-            for (String url : trueUrls){
-                bw.write(url);
-                bw.newLine();
-
-            }
-            bw.flush();
+//            for (String url : trueUrls){
+//                bw.write(url);
+//                bw.newLine();
+//
+//            }
+//            bw.flush();
         }
-
+        for (String url : urls){
+            bw.write(url);
+            bw.newLine();
+        }
+        bw.flush();
         bw.close();
 
     }
@@ -157,7 +161,8 @@ public class ResourceFetcher {
         q = args[0];
         file = args[1];
         total = Integer.parseInt(args[2]);
-        new ResourceFetcher().getWebURLS(q, file, total);
+        int maxiter = Integer.parseInt(args[3]);
+        new ResourceFetcher().getWebURLS(q, file, total, maxiter);
     }
 
     public class URLCallable implements Callable<String>{
