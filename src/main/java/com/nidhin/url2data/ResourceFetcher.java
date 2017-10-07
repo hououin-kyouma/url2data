@@ -21,6 +21,9 @@ public class ResourceFetcher {
     OkHttpClient okHttpClient = new OkHttpClient();
     Type type = new TypeToken<HashMap<String, Object>>(){}.getType();
     Gson gson = new Gson();
+    public HashSet<String> urls = new HashSet<>();
+    public String file = "";
+    public boolean runHook = true;
 
     public HashMap<String, Object> buildRequestAndHitEndpoint(String q, int count, int offset) throws IOException {
 //        HttpUrl.Builder builder = HttpUrl.parse("https://api.cognitive.microsoft.com/bing/v5.0/search").newBuilder();
@@ -51,6 +54,7 @@ public class ResourceFetcher {
         boolean repeat = true;
         BufferedWriter bw = new BufferedWriter(new FileWriter(file,true));
         int totalRecdCount =0;
+        this.file = file;
 
         while (repeat && urls.size() < total &&(maxIter-- > 0)) {
             System.out.println("next bing req");
@@ -112,12 +116,14 @@ public class ResourceFetcher {
 //            }
 //            bw.flush();
         }
+        this.urls = urls;
         for (String url : urls){
             bw.write(url);
             bw.newLine();
         }
         bw.flush();
         bw.close();
+        this.runHook = false;
 
     }
 //    public static String getTheFinalURL(String url){
@@ -162,6 +168,12 @@ public class ResourceFetcher {
         file = args[1];
         total = Integer.parseInt(args[2]);
         int maxiter = Integer.parseInt(args[3]);
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                super.run();
+            }
+        });
         new ResourceFetcher().getWebURLS(q, file, total, maxiter);
     }
 
@@ -174,6 +186,26 @@ public class ResourceFetcher {
         @Override
         public String call() throws Exception {
             return getFinalURL(url);
+        }
+    }
+
+    public class Hook extends Thread{
+        @Override
+        public void run() {
+            super.run();
+            if (!runHook)
+                return;
+            try {
+                BufferedWriter bw = new BufferedWriter(new FileWriter(file,true));
+                for (String url : urls){
+                    bw.write(url);
+                    bw.newLine();
+                }
+                bw.flush();
+                bw.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
